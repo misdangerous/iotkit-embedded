@@ -30,6 +30,7 @@ SRCS_ota-example-mqtt           := ota/ota_example_mqtt.c
 SRCS_linkkit-example-cota       := app_entry.c linkkit/linkkit_example_cota.c
 SRCS_linkkit-example-sched      := app_entry.c cJSON.c linkkit/linkkit_example_sched.c
 SRCS_linkkit-example-solo       := app_entry.c cJSON.c linkkit/linkkit_example_solo.c
+SRCS_linkkit-xuchangzhigong     := app_entry.c cJSON.c linkkit/linkkit_xuchangzhigong.c
 SRCS_linkkit-example-countdown  := app_entry.c cJSON.c linkkit/linkkit_example_cntdown.c
 SRCS_linkkit-example-gw         := app_entry.c cJSON.c linkkit/linkkit_example_gateway.c
 
@@ -71,9 +72,11 @@ $(call Append_Conditional, TARGET, linkkit-example-cota, \
 
 ifneq (,$(filter -DDEPRECATED_LINKKIT,$(CFLAGS)))
 $(call Append_Conditional, TARGET, linkkit-example-solo,        DEVICE_MODEL_ENABLED, DEVICE_MODEL_GATEWAY)
+$(call Append_Conditional, TARGET, linkkit-xuchangzhigong,        DEVICE_MODEL_ENABLED, DEVICE_MODEL_GATEWAY)
 $(call Append_Conditional, TARGET, linkkit-example-gw,          DEVICE_MODEL_ENABLED  DEVICE_MODEL_GATEWAY)
 else
 $(call Append_Conditional, TARGET, linkkit-example-solo,        DEVICE_MODEL_ENABLED)
+$(call Append_Conditional, TARGET, linkkit-xuchangzhigong,        DEVICE_MODEL_ENABLED)
 $(call Append_Conditional, TARGET, linkkit-example-gw,          DEVICE_MODEL_ENABLED  DEVICE_MODEL_GATEWAY)
 endif
 
