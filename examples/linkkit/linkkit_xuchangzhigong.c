@@ -6,6 +6,8 @@
 #include "iot_export_linkkit.h"
 #include "cJSON.h"
 #include "app_entry.h"
+#include "apue.h"
+#define	CS_OPEN "/tmp/opend.socket"	/* well-known name */
 
 #if defined(OTA_ENABLED) && defined(BUILD_AOS)
     #include "ota_service.h"
@@ -522,6 +524,8 @@ int linkkit_main(void *paras)
 #if defined(__UBUNTU_SDK_DEMO__)
     int                             argc = ((app_main_paras_t *)paras)->argc;
     char                          **argv = ((app_main_paras_t *)paras)->argv;
+    int	 server_fd;
+    char buffer[1024];
 
     if (argc > 1) {
         int     tmp = atoi(argv[1]);
@@ -591,6 +595,20 @@ int linkkit_main(void *paras)
         EXAMPLE_TRACE("IOT_Linkkit_Connect Failed\n");
         return -1;
     }
+    /* unix socket link test */
+    server_fd = cli_conn(CS_OPEN);
+    if(server_fd < 0){
+        EXAMPLE_TRACE("cli_conn error\n");
+    }
+
+    char *strbuff = "feed_lora:4,1,9000,31\n";
+    write(server_fd, strbuff, strlen(strbuff));
+    int nread;
+    nread = read(server_fd, buffer, 1024);
+    buffer[nread] = 0;
+    if(nread > 0){
+        EXAMPLE_TRACE("server recv:%s\n",buffer);
+    }
 
     time_begin_sec = user_update_sec();
     while (1) {
@@ -638,6 +656,7 @@ int linkkit_main(void *paras)
 
     IOT_DumpMemoryStats(IOT_LOG_INFO);
     IOT_SetLogLevel(IOT_LOG_NONE);
+    close(server_fd);
 
     return 0;
 }
