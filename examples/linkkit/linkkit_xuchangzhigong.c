@@ -7,6 +7,7 @@
 #include "cJSON.h"
 #include "app_entry.h"
 #include "apue.h"
+#include "ipc_socket.h"
 #define	CS_OPEN "/tmp/opend.socket"	/* well-known name */
 
 #if defined(OTA_ENABLED) && defined(BUILD_AOS)
@@ -40,6 +41,8 @@ typedef struct {
     int cloud_connected;
     int master_initialized;
 } user_example_ctx_t;
+
+int	 server_fd;
 
 static user_example_ctx_t g_user_example_ctx;
 
@@ -393,37 +396,91 @@ void user_post_property(void)
     static int example_index = 0;
     int res = 0;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-    char *property_payload = "NULL";
+    char property_payload[512];
+    unsigned short RevData[5];
 
     if (example_index == 0) {
         /* Normal Example */
-        property_payload = "{\"Feed_FreqStatus\":3}";
+        //property_payload = "{\"Feed_FreqStatus\":3}";
+        Request_Commond(server_fd,FEED_LORA_NAME, 1, FREQ_STATUS, 1, RevData);
+        EXAMPLE_TRACE("Feed_FreqStatus: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Feed_FreqStatus\":%d}", RevData[0]);
         example_index++;
     } else if (example_index == 1) {
         /* Wrong Property ID */
-        property_payload = "{\"Feed_FreqSet\":50.00}";
+        //property_payload = "{\"Feed_FreqSet\":50.00}";
+        Request_Commond(server_fd,FEED_LORA_NAME, 1, FREQ_FREQSET, 1, RevData);
+        EXAMPLE_TRACE("Feed_FreqSet: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Feed_FreqSet\":%.2f}", (float)RevData[0] / 100);
         example_index++;
     } else if (example_index == 2) {
         /* Wrong Value Format */
-        property_payload = "{\"Feed_FreqRun\":50.00}";
+        //property_payload = "{\"Feed_FreqRun\":50.00}";
+        Request_Commond(server_fd,FEED_LORA_NAME, 1, FREQ_FREQRUN, 1, RevData);
+        EXAMPLE_TRACE("Feed_FreqRun: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Feed_FreqRun\":%.2f}", (float)RevData[0] / 100);
         example_index++;
     } else if (example_index == 3) {
         /* Wrong Value Range */
-        property_payload = "{\"Feed_Hum\":10.01}";
+        //property_payload = "{\"Feed_Hum\":10.01}";
+        Request_Commond(server_fd,FEED_LORA_NAME, 1, FEED_HUM, 1, RevData);
+        EXAMPLE_TRACE("Feed_Hum: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Feed_Hum\":%.2f}", (float)RevData[0] / 100);
         example_index++;
     } else if (example_index == 4) {
         /* Missing Property Item */
-        property_payload = "{\"Roller_FreqStatus\":3}";
+        //property_payload = "{\"Roller_FreqStatus\":3}";
+        Request_Commond(server_fd,FCONVE_NAME, 1, FREQ_STATUS, 1, RevData);
+        EXAMPLE_TRACE("Roller_FreqStatus: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Roller_FreqStatus\":%d}", RevData[0]);
         example_index++;
     } else if (example_index == 5) {
         /* Wrong Params Format */
-        property_payload = "{\"Roller_FreqSet\":40.01}";
+        //property_payload = "{\"Roller_FreqSet\":40.01}";
+        Request_Commond(server_fd,FCONVE_NAME, 1, FREQ_FREQSET, 1, RevData);
+        EXAMPLE_TRACE("Roller_FreqSet: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Roller_FreqSet\":%.2f}", (float)RevData[0] / 100);
         example_index++;
     } else if (example_index == 6) {
         /* Wrong Json Format */
-        property_payload = "{\"Roller_FreqRun\":40.02}";
+        //property_payload = "{\"Roller_FreqRun\":40.02}";
+        Request_Commond(server_fd,FCONVE_NAME, 1, FREQ_FREQRUN, 1, RevData);
+        EXAMPLE_TRACE("Roller_FreqRun: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Roller_FreqRun\":%.2f}", (float)RevData[0] / 100);
+        example_index++;
+    }else if (example_index == 7) {
+        /* Wrong Json Format */
+        //property_payload = "{\"Temp\":40.02}";
+        Request_Commond(server_fd,TEMP_NAME, 1, TEMP_VALUE, 1, RevData);
+        EXAMPLE_TRACE("Temp: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Temp\":%.2f}", (float)RevData[0] / 100);
+        example_index++;
+    }else if (example_index == 8) {
+        /* Wrong Json Format */
+        //property_payload = "{\"Temp_PowerSet\":40.02}";
+        Request_Commond(server_fd,TEMP_NAME, 1, TEMP_OUTPOWER, 1, RevData);
+        EXAMPLE_TRACE("Temp_PowerSet: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Temp_PowerSet\":%d}", RevData[0]);
+        example_index++;
+    }else if (example_index == 9) {
+        /* Wrong Json Format */
+        //property_payload = "{\"Temp_Stauts\":40.02}";
+        Request_Commond(server_fd,TEMP_NAME, 1, FREQ_FREQRUN, 1, RevData);
+        EXAMPLE_TRACE("Temp_Stauts: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Temp_Stauts\":%d}", RevData[0]);
+        //example_index++;
         example_index = 0;
     }
+    #if 0
+    else if (example_index == 10) {
+        /* Wrong Json Format */
+        //property_payload = "{\"Cool_Status\":40.02}";
+        Request_Commond(server_fd,TEMP_NAME, 1, FREQ_FREQRUN, 1, RevData);
+        EXAMPLE_TRACE("Cool_Status: %d", RevData[0]);
+        snprintf(property_payload, 512, "{\"Cool_Status\":%d}", RevData[0]);
+        example_index = 0;
+    }
+    #endif
 
     res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)property_payload, strlen(property_payload));
@@ -524,8 +581,7 @@ int linkkit_main(void *paras)
 #if defined(__UBUNTU_SDK_DEMO__)
     int                             argc = ((app_main_paras_t *)paras)->argc;
     char                          **argv = ((app_main_paras_t *)paras)->argv;
-    int	 server_fd;
-    char buffer[1024];
+    
 
     if (argc > 1) {
         int     tmp = atoi(argv[1]);
@@ -601,14 +657,6 @@ int linkkit_main(void *paras)
         EXAMPLE_TRACE("cli_conn error\n");
     }
 
-    char *strbuff = "feed_lora:4,1,9000,31\n";
-    write(server_fd, strbuff, strlen(strbuff));
-    int nread;
-    nread = read(server_fd, buffer, 1024);
-    buffer[nread] = 0;
-    if(nread > 0){
-        EXAMPLE_TRACE("server recv:%s\n",buffer);
-    }
 
     time_begin_sec = user_update_sec();
     while (1) {
@@ -624,7 +672,7 @@ int linkkit_main(void *paras)
         }
 
         /* Post Proprety Example */
-        if (time_now_sec % 11 == 0 && user_master_dev_available()) {
+        if (time_now_sec % 2 == 0 && user_master_dev_available()) {
             user_post_property();
         }
         

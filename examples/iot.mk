@@ -30,7 +30,7 @@ SRCS_ota-example-mqtt           := ota/ota_example_mqtt.c
 SRCS_linkkit-example-cota       := app_entry.c linkkit/linkkit_example_cota.c
 SRCS_linkkit-example-sched      := app_entry.c cJSON.c linkkit/linkkit_example_sched.c
 SRCS_linkkit-example-solo       := app_entry.c cJSON.c linkkit/linkkit_example_solo.c
-SRCS_linkkit-xuchangzhigong     := app_entry.c cJSON.c linkkit/linkkit_xuchangzhigong.c lib/cliconn.c
+SRCS_linkkit-xuchangzhigong     := app_entry.c cJSON.c linkkit/linkkit_xuchangzhigong.c lib/cliconn.c lib/ipc_socket.c
 SRCS_linkkit-example-countdown  := app_entry.c cJSON.c linkkit/linkkit_example_cntdown.c
 SRCS_linkkit-example-gw         := app_entry.c cJSON.c linkkit/linkkit_example_gateway.c
 
