@@ -40,9 +40,20 @@ typedef struct {
     int master_devid;
     int cloud_connected;
     int master_initialized;
+    int	 server_fd;
 } user_example_ctx_t;
 
-int	 server_fd;
+typedef struct{
+    unsigned short Feed_Freq_ErrorCode;
+    unsigned short Roller_Freq_ErrorCode;
+    unsigned short Temp_Freq_ErrorCode;
+}error_code_t;
+
+static error_code_t g_error_code;
+static error_code_t *error_code_get_ctx(void)
+{
+    return &g_error_code;
+}
 
 static user_example_ctx_t g_user_example_ctx;
 
@@ -397,77 +408,49 @@ void user_post_property(void)
     int res = 0;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
     char property_payload[512];
-    unsigned short RevData[5];
+    unsigned short RevData[10];
 
     if (example_index == 0) {
-        /* Normal Example */
-        //property_payload = "{\"Feed_FreqStatus\":3}";
-        Request_Commond(server_fd,FEED_LORA_NAME, 1, FREQ_STATUS, 1, RevData);
-        EXAMPLE_TRACE("Feed_FreqStatus: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Feed_FreqStatus\":%d}", RevData[0]);
+        /* feed lora */
+        Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_STATUS, 1, RevData);
+        Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_FREQSET, 1, &RevData[1]);
+        Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_FREQRUN, 1, &RevData[2]);
+        Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FEED_HUM, 1, &RevData[3]);
+
+        EXAMPLE_TRACE("Feed_FreqStatus: %d,Feed_FreqSet: %d,Feed_FreqRun: %d,Feed_Hum: %d,", RevData[0],RevData[1],RevData[2],RevData[3]);
+
+        snprintf(property_payload, 512, "{\"Feed_FreqStatus\":%d,\"Feed_FreqSet\":%.2f,\"Feed_FreqRun\":%.2f,\"Feed_Hum\":%.2f}", \
+                                    RevData[0], (float)RevData[1] / 100, (float)RevData[2] / 100, (float)RevData[3] / 100);
         example_index++;
     } else if (example_index == 1) {
-        /* Wrong Property ID */
-        //property_payload = "{\"Feed_FreqSet\":50.00}";
-        Request_Commond(server_fd,FEED_LORA_NAME, 1, FREQ_FREQSET, 1, RevData);
-        EXAMPLE_TRACE("Feed_FreqSet: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Feed_FreqSet\":%.2f}", (float)RevData[0] / 100);
+        /* Roller freq */
+        Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_STATUS, 1, RevData);
+        Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_FREQSET, 1, &RevData[1]);
+        Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_FREQRUN, 1, &RevData[2]);
+
+        EXAMPLE_TRACE("Roller_FreqStatus: %d,Roller_FreqSet: %d,Roller_FreqRun: %d", RevData[0], RevData[1], RevData[2]);
+        
+        snprintf(property_payload, 512, "{\"Roller_FreqStatus\":%d,\"Roller_FreqSet\":%.2f,\"Roller_FreqRun\":%.2f}", \
+                RevData[0], (float)RevData[1] / 100, (float)RevData[2] / 100);
         example_index++;
-    } else if (example_index == 2) {
-        /* Wrong Value Format */
-        //property_payload = "{\"Feed_FreqRun\":50.00}";
-        Request_Commond(server_fd,FEED_LORA_NAME, 1, FREQ_FREQRUN, 1, RevData);
-        EXAMPLE_TRACE("Feed_FreqRun: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Feed_FreqRun\":%.2f}", (float)RevData[0] / 100);
+    }else if (example_index == 2) {
+        /* temp freq */
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_VALUE, 1, RevData);
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_OUTPOWER, 1, &RevData[1]);
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_ERROR, 1, &RevData[2]);
+
+        EXAMPLE_TRACE("Temp: %d,Temp_PowerSet: %d,Temp_Stauts: %d", RevData[0], RevData[1], RevData[2]);
+        snprintf(property_payload, 512, "{\"Temp\":%.2f,\"Temp_PowerSet\":%d,\"Temp_Stauts\":%d}", \
+                                            (float)RevData[0] / 100, RevData[1], RevData[2]);
         example_index++;
-    } else if (example_index == 3) {
-        /* Wrong Value Range */
-        //property_payload = "{\"Feed_Hum\":10.01}";
-        Request_Commond(server_fd,FEED_LORA_NAME, 1, FEED_HUM, 1, RevData);
-        EXAMPLE_TRACE("Feed_Hum: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Feed_Hum\":%.2f}", (float)RevData[0] / 100);
-        example_index++;
-    } else if (example_index == 4) {
-        /* Missing Property Item */
-        //property_payload = "{\"Roller_FreqStatus\":3}";
-        Request_Commond(server_fd,FCONVE_NAME, 1, FREQ_STATUS, 1, RevData);
-        EXAMPLE_TRACE("Roller_FreqStatus: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Roller_FreqStatus\":%d}", RevData[0]);
-        example_index++;
-    } else if (example_index == 5) {
-        /* Wrong Params Format */
-        //property_payload = "{\"Roller_FreqSet\":40.01}";
-        Request_Commond(server_fd,FCONVE_NAME, 1, FREQ_FREQSET, 1, RevData);
-        EXAMPLE_TRACE("Roller_FreqSet: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Roller_FreqSet\":%.2f}", (float)RevData[0] / 100);
-        example_index++;
-    } else if (example_index == 6) {
-        /* Wrong Json Format */
-        //property_payload = "{\"Roller_FreqRun\":40.02}";
-        Request_Commond(server_fd,FCONVE_NAME, 1, FREQ_FREQRUN, 1, RevData);
-        EXAMPLE_TRACE("Roller_FreqRun: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Roller_FreqRun\":%.2f}", (float)RevData[0] / 100);
-        example_index++;
-    }else if (example_index == 7) {
-        /* Wrong Json Format */
-        //property_payload = "{\"Temp\":40.02}";
-        Request_Commond(server_fd,TEMP_NAME, 1, TEMP_VALUE, 1, RevData);
-        EXAMPLE_TRACE("Temp: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Temp\":%.2f}", (float)RevData[0] / 100);
-        example_index++;
-    }else if (example_index == 8) {
-        /* Wrong Json Format */
-        //property_payload = "{\"Temp_PowerSet\":40.02}";
-        Request_Commond(server_fd,TEMP_NAME, 1, TEMP_OUTPOWER, 1, RevData);
-        EXAMPLE_TRACE("Temp_PowerSet: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Temp_PowerSet\":%d}", RevData[0]);
-        example_index++;
-    }else if (example_index == 9) {
-        /* Wrong Json Format */
-        //property_payload = "{\"Temp_Stauts\":40.02}";
-        Request_Commond(server_fd,TEMP_NAME, 1, FREQ_FREQRUN, 1, RevData);
-        EXAMPLE_TRACE("Temp_Stauts: %d", RevData[0]);
-        snprintf(property_payload, 512, "{\"Temp_Stauts\":%d}", RevData[0]);
+    }else if (example_index == 3) {
+        /* normal */
+        Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, VOLTAGE_A, 6, RevData);
+        EXAMPLE_TRACE("Voltage_A: %.1f Voltage_B: %.1f Voltage_C: %.1f Current_A: %.2f Current_B: %.2f Current_C: %.2f", \
+                        (float)RevData[0] / 10, (float)RevData[1] / 10, (float)RevData[2] / 10, \
+                        (float)RevData[3] / 100, (float)RevData[4] / 100, (float)RevData[5] / 100);
+        snprintf(property_payload, 512, "{\"Voltage_A\":%.1f,\"Voltage_B\":%.1f,\"Voltage_C\":%.1f,\"Current_A\":%.2f,\"Current_B\":%.2f,\"Current_C\":%.2f}", \
+                        (float)RevData[0] / 10, (float)RevData[1] / 10, (float)RevData[2] / 10, (float)RevData[3] / 100, (float)RevData[4] / 100, (float)RevData[5] / 100);
         //example_index++;
         example_index = 0;
     }
@@ -475,7 +458,7 @@ void user_post_property(void)
     else if (example_index == 10) {
         /* Wrong Json Format */
         //property_payload = "{\"Cool_Status\":40.02}";
-        Request_Commond(server_fd,TEMP_NAME, 1, FREQ_FREQRUN, 1, RevData);
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, FREQ_FREQRUN, 1, RevData);
         EXAMPLE_TRACE("Cool_Status: %d", RevData[0]);
         snprintf(property_payload, 512, "{\"Cool_Status\":%d}", RevData[0]);
         example_index = 0;
@@ -493,22 +476,50 @@ void user_post_event(void)
     static int example_index = 0;
     int res = 0;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-    char *event_id = "Feed_FreqError";
-    char *event_payload = "NULL";
+    error_code_t *error_code_ctx = error_code_get_ctx();
+    char *event_id = "NULL";
+    char event_payload[512];
+    unsigned short RevData[10];
 
     if (example_index == 0) {
+        event_id = "Feed_FreqError";
         /* Normal Example */
-        event_payload = "{\"Feed_FreqErrorCode\":0}";
+        Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_ERROR, 1, RevData);
+        if(RevData[0] != error_code_ctx->Feed_Freq_ErrorCode){
+            error_code_ctx->Feed_Freq_ErrorCode = RevData[0];
+            snprintf(event_payload, 512, "{\"Feed_FreqErrorCode\":%d}", RevData[0]);
+        }else{
+            EXAMPLE_TRACE("Feed_Freq_ErrorCode: %d Feed_Freq RecvCode: %d", error_code_ctx->Feed_Freq_ErrorCode, RevData[0]);
+            example_index++;
+            //EXAMPLE_TRACE("index : %d",example_index);
+            return ;
+        }
         example_index++;
     } else if (example_index == 1) {
-        event_id = "Temp_Error";
+        event_id = "Roller_Error";
         /* Wrong Property ID */
-        event_payload = "{\"Temp_ErrorCode\":0}";
+        Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_ERROR, 1, RevData);
+        if(RevData[0] != error_code_ctx->Roller_Freq_ErrorCode){
+            error_code_ctx->Roller_Freq_ErrorCode = RevData[0];
+            snprintf(event_payload, 512, "{\"Roller_ErrorCode\":%d}", RevData[0]);
+        }else{
+            EXAMPLE_TRACE("Roller_Freq_ErrorCode: %d Roller RecvCode: %d", error_code_ctx->Roller_Freq_ErrorCode, RevData[0]);
+            example_index++;
+            return ;
+        }
         example_index++;
     } else if (example_index == 2) {
-        event_id = "Roller_Error";
+        event_id = "Temp_Error";
         /* Wrong Value Format */
-        event_payload = "{\"Roller_ErrorCode\":0}";
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_ERROR, 1, RevData);
+        if(RevData[0] != error_code_ctx->Temp_Freq_ErrorCode){
+            error_code_ctx->Temp_Freq_ErrorCode = RevData[0];
+            snprintf(event_payload, 512, "{\"Temp_ErrorCode\":%d}", RevData[0]);
+        }else{
+            EXAMPLE_TRACE("Temp_Freq_ErrorCode: %d Temp RecvCode: %d", error_code_ctx->Temp_Freq_ErrorCode, RevData[0]);
+            example_index = 0;
+            return ;
+        }
         example_index = 0;
     } 
 
@@ -652,8 +663,8 @@ int linkkit_main(void *paras)
         return -1;
     }
     /* unix socket link test */
-    server_fd = cli_conn(CS_OPEN);
-    if(server_fd < 0){
+    user_example_ctx->server_fd = cli_conn(CS_OPEN);
+    if(user_example_ctx->server_fd < 0){
         EXAMPLE_TRACE("cli_conn error\n");
     }
 
@@ -670,22 +681,21 @@ int linkkit_main(void *paras)
             EXAMPLE_TRACE("Example Run for Over %d Seconds, Break Loop!\n", max_running_seconds);
             break;
         }
-
         /* Post Proprety Example */
         if (time_now_sec % 2 == 0 && user_master_dev_available()) {
             user_post_property();
         }
         
         /* Post Event Example */
-        if (time_now_sec % 17 == 0 && user_master_dev_available()) {
+        if (time_now_sec % 3 == 0 && user_master_dev_available()) {
             user_post_event();
         }
-        
+        #if 0
         /* Device Info Update Example */
         if (time_now_sec % 23 == 0 && user_master_dev_available()) {
             user_deviceinfo_update();
         }
-        #if 0
+        
         /* Device Info Delete Example */
         if (time_now_sec % 29 == 0 && user_master_dev_available()) {
             user_deviceinfo_delete();
@@ -704,7 +714,7 @@ int linkkit_main(void *paras)
 
     IOT_DumpMemoryStats(IOT_LOG_INFO);
     IOT_SetLogLevel(IOT_LOG_NONE);
-    close(server_fd);
+    close(user_example_ctx->server_fd);
 
     return 0;
 }

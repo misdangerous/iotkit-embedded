@@ -23,7 +23,7 @@ int RevData_Analyze(char * Str_buffer, unsigned short *RevData)
 	while(token != NULL){
 		sscanf(token, "%d", &data_tmp);
 		RevData[i++] = (unsigned short)data_tmp;
-        EXAMPLE_TRACE("RevData:%d index:%d", (int)RevData[i-1], i-1);
+        //EXAMPLE_TRACE("RevData:%d index:%d", (int)RevData[i-1], i-1);
 		token = strtok(NULL,",");
 	}
     return 0;
@@ -68,7 +68,7 @@ int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number
 		    &data_tmp, &rev_addr, &rev_reg_start, &rev_reg_num, buffer);
 
         if(data_tmp == 4){
-            EXAMPLE_TRACE("slave_addr:%d reg_start:%d reg_num:%d", rev_addr, rev_reg_start, rev_reg_num);
+            //EXAMPLE_TRACE("slave_addr:%d reg_start:%d reg_num:%d", rev_addr, rev_reg_start, rev_reg_num);
             if((rev_addr == addr) && (reg_start == rev_reg_start) && (rev_reg_num == reg_number)){
                 /* 解析得出数据 */
                 RevData_Analyze(buffer, DataBuf);
