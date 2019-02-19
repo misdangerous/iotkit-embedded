@@ -25,6 +25,17 @@
 #define CURRENT_B 0x0004
 #define CURRENT_C 0x0005
 
+#define FEED_HUM_DIV  100
+#define FREQ_FREQSET_DIV  100
+#define FREQ_FREQRUN_DIV  100
+#define TEMP_VALUE_DIV  100
+#define VOLTAGE_DIV  10
+#define CURRENT_DIV  100
+
+#define FREQ_CONTROL 0xA000
+#define FREQ_VALUE   0xA001
+
 int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number, unsigned short *DataBuf);
+int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short DataBuf);
 
 #endif

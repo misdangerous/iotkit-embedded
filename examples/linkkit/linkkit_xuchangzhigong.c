@@ -170,8 +170,69 @@ static int user_service_request_event_handler(const int devid, const char *servi
 static int user_property_set_event_handler(const int devid, const char *request, const int request_len)
 {
     int res = 0;
+    char nameid[50];
+    char valuestring[50];
+    
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
     EXAMPLE_TRACE("Property Set Received, Devid: %d, Request: %s", devid, request);
+
+    sscanf(request, "{\"%[^\"]\":%[^}]}", nameid, valuestring);
+
+    EXAMPLE_TRACE("nameid: %s, valuestring: %s", nameid, valuestring);
+
+    if (strcmp("Feed_FreqStatus", nameid) == 0) {
+        int set_value = atoi(valuestring);
+        /* 正转 */
+        if(set_value == 1){
+            set_value = 1;
+        /* 反转 */
+        }else if(set_value == 2){
+            set_value = 2;
+        /* 停止 */
+        }else if(set_value == 3){
+            set_value = 5;
+        }
+        res = Send_Commond(user_example_ctx->server_fd, FEED_LORA_NAME, 1, FREQ_CONTROL, (unsigned short)set_value);
+        if(res < 0){
+            return -1;
+        }
+    }else if (strcmp("Feed_FreqSet", nameid) == 0) {
+        double set_value = atof(valuestring);
+        unsigned short value = set_value / 50 * 10000;
+        res = Send_Commond(user_example_ctx->server_fd, FEED_LORA_NAME, 1, FREQ_VALUE, value);
+        if(res < 0){
+            return -1;
+        }
+    }else if (strcmp("Roller_FreqStatus", nameid) == 0) {
+        int set_value = atoi(valuestring);
+        /* 正转 */
+        if(set_value == 1){
+            set_value = 1;
+        /* 反转 */
+        }else if(set_value == 2){
+            set_value = 2;
+        /* 停止 */
+        }else if(set_value == 3){
+            set_value = 5;
+        }
+        res = Send_Commond(user_example_ctx->server_fd, FCONVE_NAME, 1, FREQ_CONTROL, (unsigned short)set_value);
+        if(res < 0){
+            return -1;
+        }
+    }else if (strcmp("Roller_FreqSet", nameid) == 0) {
+        double set_value = atof(valuestring);
+        unsigned short value = set_value / 50 * 10000;
+        res = Send_Commond(user_example_ctx->server_fd, FCONVE_NAME, 1, FREQ_VALUE, value);
+        if(res < 0){
+            return -1;
+        }
+    }else if (strcmp("Temp_PowerSet", nameid) == 0) {
+        int set_value = atoi(valuestring);
+        res = Send_Commond(user_example_ctx->server_fd, TEMP_NAME, 1, TEMP_OUTPOWER, (unsigned short)set_value);
+        if(res < 0){
+            return -1;
+        }
+    }
 
     res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)request, request_len);
@@ -186,6 +247,9 @@ static int user_property_get_event_handler(const int devid, const char *request,
     cJSON *request_root = NULL, *item_propertyid = NULL;
     cJSON *response_root = NULL;
     int index = 0;
+    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
+    unsigned short RevData[10];
+
     EXAMPLE_TRACE("Property Get Received, Devid: %d, Request: %s", devid, request);
 
     /* Parse Request */
@@ -214,77 +278,57 @@ static int user_property_get_event_handler(const int devid, const char *request,
 
         EXAMPLE_TRACE("Property ID, index: %d, Value: %s", index, item_propertyid->valuestring);
 
-        if (strcmp("WIFI_Tx_Rate", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "WIFI_Tx_Rate", 1111);
-        } else if (strcmp("WIFI_Rx_Rate", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "WIFI_Rx_Rate", 2222);
-        } else if (strcmp("RGBColor", item_propertyid->valuestring) == 0) {
-            cJSON *item_rgbcolor = cJSON_CreateObject();
-            if (item_rgbcolor == NULL) {
-                cJSON_Delete(request_root);
-                cJSON_Delete(response_root);
-                return -1;
-            }
-            cJSON_AddNumberToObject(item_rgbcolor, "Red", 100);
-            cJSON_AddNumberToObject(item_rgbcolor, "Green", 100);
-            cJSON_AddNumberToObject(item_rgbcolor, "Blue", 100);
-            cJSON_AddItemToObject(response_root, "RGBColor", item_rgbcolor);
-        } else if (strcmp("HSVColor", item_propertyid->valuestring) == 0) {
-            cJSON *item_hsvcolor = cJSON_CreateObject();
-            if (item_hsvcolor == NULL) {
-                cJSON_Delete(request_root);
-                cJSON_Delete(response_root);
-                return -1;
-            }
-            cJSON_AddNumberToObject(item_hsvcolor, "Hue", 50);
-            cJSON_AddNumberToObject(item_hsvcolor, "Saturation", 50);
-            cJSON_AddNumberToObject(item_hsvcolor, "Value", 50);
-            cJSON_AddItemToObject(response_root, "HSVColor", item_hsvcolor);
-        } else if (strcmp("HSLColor", item_propertyid->valuestring) == 0) {
-            cJSON *item_hslcolor = cJSON_CreateObject();
-            if (item_hslcolor == NULL) {
-                cJSON_Delete(request_root);
-                cJSON_Delete(response_root);
-                return -1;
-            }
-            cJSON_AddNumberToObject(item_hslcolor, "Hue", 70);
-            cJSON_AddNumberToObject(item_hslcolor, "Saturation", 70);
-            cJSON_AddNumberToObject(item_hslcolor, "Lightness", 70);
-            cJSON_AddItemToObject(response_root, "HSLColor", item_hslcolor);
-        } else if (strcmp("WorkMode", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "WorkMode", 4);
-        } else if (strcmp("NightLightSwitch", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "NightLightSwitch", 1);
-        } else if (strcmp("Brightness", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "Brightness", 30);
-        } else if (strcmp("LightSwitch", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "LightSwitch", 1);
-        } else if (strcmp("ColorTemperature", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "ColorTemperature", 2800);
-        } else if (strcmp("PropertyCharacter", item_propertyid->valuestring) == 0) {
-            cJSON_AddStringToObject(response_root, "PropertyCharacter", "testprop");
-        } else if (strcmp("Propertypoint", item_propertyid->valuestring) == 0) {
-            cJSON_AddNumberToObject(response_root, "Propertypoint", 50);
-        } else if (strcmp("LocalTimer", item_propertyid->valuestring) == 0) {
-            cJSON *array_localtimer = cJSON_CreateArray();
-            if (array_localtimer == NULL) {
-                cJSON_Delete(request_root);
-                cJSON_Delete(response_root);
-                return -1;
-            }
-
-            cJSON *item_localtimer = cJSON_CreateObject();
-            if (item_localtimer == NULL) {
-                cJSON_Delete(request_root);
-                cJSON_Delete(response_root);
-                cJSON_Delete(array_localtimer);
-                return -1;
-            }
-            cJSON_AddStringToObject(item_localtimer, "Timer", "10 11 * * * 1 2 3 4 5");
-            cJSON_AddNumberToObject(item_localtimer, "Enable", 1);
-            cJSON_AddNumberToObject(item_localtimer, "IsValid", 1);
-            cJSON_AddItemToArray(array_localtimer, item_localtimer);
-            cJSON_AddItemToObject(response_root, "LocalTimer", array_localtimer);
+        if (strcmp("Feed_FreqStatus", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_STATUS, 1, RevData);
+            cJSON_AddNumberToObject(response_root, "Feed_FreqStatus", (int)RevData);
+        } else if (strcmp("Feed_FreqSet", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_FREQSET, 1, &RevData[1]);
+            cJSON_AddNumberToObject(response_root, "Feed_FreqSet", (float)RevData[1] / FREQ_FREQSET_DIV);
+        } else if (strcmp("Feed_FreqRun", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_FREQRUN, 1, &RevData[2]);
+            cJSON_AddNumberToObject(response_root, "Feed_FreqRun", (float)RevData[2] / FREQ_FREQRUN_DIV);
+        } else if (strcmp("Feed_Hum", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FEED_HUM, 1, &RevData[3]);
+            cJSON_AddNumberToObject(response_root, "Feed_Hum", (float)RevData[3] / FEED_HUM_DIV);
+        } else if (strcmp("Roller_FreqStatus", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_STATUS, 1, &RevData[4]);
+           cJSON_AddNumberToObject(response_root, "Roller_FreqStatus", RevData[4]);
+        } else if (strcmp("Roller_FreqSet", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_FREQSET, 1, &RevData[5]);
+            cJSON_AddNumberToObject(response_root, "Roller_FreqSet", (float)RevData[5] / FREQ_FREQSET_DIV);
+        } else if (strcmp("Roller_FreqRun", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,FCONVE_NAME, 1, FREQ_FREQRUN, 1, &RevData[6]);
+            cJSON_AddNumberToObject(response_root, "Roller_FreqRun", (float)RevData[6] / FREQ_FREQRUN_DIV);
+        } else if (strcmp("Temp", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_VALUE, 1, &RevData[7]);
+            cJSON_AddNumberToObject(response_root, "Temp", (float)RevData[7] / TEMP_VALUE_DIV);
+        } else if (strcmp("Temp_PowerSet", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_OUTPOWER, 1, &RevData[8]);
+            cJSON_AddNumberToObject(response_root, "Temp_PowerSet", RevData[8]);
+        } else if (strcmp("Temp_Stauts", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_ERROR, 1, &RevData[9]);
+            cJSON_AddNumberToObject(response_root, "Temp_Stauts", RevData[9]);
+        } else if (strcmp("Cool_Status", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, FEED_HUM, 1, &RevData[0]);
+            cJSON_AddNumberToObject(response_root, "Cool_Status", 0);
+        } else if (strcmp("Voltage_A", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, VOLTAGE_A, 1, &RevData[1]);
+            cJSON_AddNumberToObject(response_root, "Voltage_A", (float)RevData[1] / VOLTAGE_DIV);
+        } else if (strcmp("Voltage_B", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, VOLTAGE_B, 1, &RevData[2]);
+            cJSON_AddNumberToObject(response_root, "Voltage_B", (float)RevData[2] / VOLTAGE_DIV);
+        }else if (strcmp("Voltage_C", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, VOLTAGE_C, 1, &RevData[3]);
+            cJSON_AddNumberToObject(response_root, "Voltage_C", (float)RevData[3] / VOLTAGE_DIV);
+        }else if (strcmp("Current_A", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, CURRENT_A, 1, &RevData[4]);
+            cJSON_AddNumberToObject(response_root, "Current_A", (float)RevData[4] / CURRENT_DIV);
+        }else if (strcmp("Current_B", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, CURRENT_B, 1, &RevData[5]);
+            cJSON_AddNumberToObject(response_root, "Current_B", (float)RevData[5] / CURRENT_DIV);
+        }else if (strcmp("Current_C", item_propertyid->valuestring) == 0) {
+            Request_Commond(user_example_ctx->server_fd,NORMAL_NAME, 2, CURRENT_C, 1, &RevData[6]);
+            cJSON_AddNumberToObject(response_root, "Current_C", (float)RevData[6] / CURRENT_DIV);
         }
     }
     cJSON_Delete(request_root);
@@ -420,7 +464,7 @@ void user_post_property(void)
         EXAMPLE_TRACE("Feed_FreqStatus: %d,Feed_FreqSet: %d,Feed_FreqRun: %d,Feed_Hum: %d,", RevData[0],RevData[1],RevData[2],RevData[3]);
 
         snprintf(property_payload, 512, "{\"Feed_FreqStatus\":%d,\"Feed_FreqSet\":%.2f,\"Feed_FreqRun\":%.2f,\"Feed_Hum\":%.2f}", \
-                                    RevData[0], (float)RevData[1] / 100, (float)RevData[2] / 100, (float)RevData[3] / 100);
+                                    RevData[0], (float)RevData[1] / FREQ_FREQSET_DIV, (float)RevData[2] / FREQ_FREQRUN_DIV, (float)RevData[3] / FEED_HUM_DIV);
         example_index++;
     } else if (example_index == 1) {
         /* Roller freq */
@@ -431,7 +475,7 @@ void user_post_property(void)
         EXAMPLE_TRACE("Roller_FreqStatus: %d,Roller_FreqSet: %d,Roller_FreqRun: %d", RevData[0], RevData[1], RevData[2]);
         
         snprintf(property_payload, 512, "{\"Roller_FreqStatus\":%d,\"Roller_FreqSet\":%.2f,\"Roller_FreqRun\":%.2f}", \
-                RevData[0], (float)RevData[1] / 100, (float)RevData[2] / 100);
+                RevData[0], (float)RevData[1] / FREQ_FREQSET_DIV, (float)RevData[2] / FREQ_FREQRUN_DIV);
         example_index++;
     }else if (example_index == 2) {
         /* temp freq */
@@ -441,7 +485,7 @@ void user_post_property(void)
 
         EXAMPLE_TRACE("Temp: %d,Temp_PowerSet: %d,Temp_Stauts: %d", RevData[0], RevData[1], RevData[2]);
         snprintf(property_payload, 512, "{\"Temp\":%.2f,\"Temp_PowerSet\":%d,\"Temp_Stauts\":%d}", \
-                                            (float)RevData[0] / 100, RevData[1], RevData[2]);
+                                            (float)RevData[0] / TEMP_VALUE_DIV, RevData[1], RevData[2]);
         example_index++;
     }else if (example_index == 3) {
         /* normal */
@@ -450,7 +494,8 @@ void user_post_property(void)
                         (float)RevData[0] / 10, (float)RevData[1] / 10, (float)RevData[2] / 10, \
                         (float)RevData[3] / 100, (float)RevData[4] / 100, (float)RevData[5] / 100);
         snprintf(property_payload, 512, "{\"Voltage_A\":%.1f,\"Voltage_B\":%.1f,\"Voltage_C\":%.1f,\"Current_A\":%.2f,\"Current_B\":%.2f,\"Current_C\":%.2f}", \
-                        (float)RevData[0] / 10, (float)RevData[1] / 10, (float)RevData[2] / 10, (float)RevData[3] / 100, (float)RevData[4] / 100, (float)RevData[5] / 100);
+                        (float)RevData[0] / VOLTAGE_DIV, (float)RevData[1] / VOLTAGE_DIV, (float)RevData[2] / VOLTAGE_DIV, \
+                        (float)RevData[3] / CURRENT_DIV, (float)RevData[4] / CURRENT_DIV, (float)RevData[5] / CURRENT_DIV);
         //example_index++;
         example_index = 0;
     }
@@ -539,27 +584,6 @@ void user_deviceinfo_update(void)
     EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
 }
 
-void user_deviceinfo_delete(void)
-{
-    int res = 0;
-    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-    char *device_info_delete = "[{\"attrKey\":\"abc\"}]";
-
-    res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_DEVICEINFO_DELETE,
-                             (unsigned char *)device_info_delete, strlen(device_info_delete));
-    EXAMPLE_TRACE("Device Info Delete Message ID: %d", res);
-}
-
-void user_post_raw_data(void)
-{
-    int res = 0;
-    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-    unsigned char raw_data[7] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-
-    res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_RAW_DATA,
-                             raw_data, 7);
-    EXAMPLE_TRACE("Post Raw Data Message ID: %d", res);
-}
 
 static int user_master_dev_available(void)
 {
@@ -662,7 +686,7 @@ int linkkit_main(void *paras)
         EXAMPLE_TRACE("IOT_Linkkit_Connect Failed\n");
         return -1;
     }
-    /* unix socket link test */
+    /* unix socket connect */
     user_example_ctx->server_fd = cli_conn(CS_OPEN);
     if(user_example_ctx->server_fd < 0){
         EXAMPLE_TRACE("cli_conn error\n");
@@ -681,29 +705,20 @@ int linkkit_main(void *paras)
             EXAMPLE_TRACE("Example Run for Over %d Seconds, Break Loop!\n", max_running_seconds);
             break;
         }
+        
         /* Post Proprety Example */
         if (time_now_sec % 2 == 0 && user_master_dev_available()) {
             user_post_property();
         }
         
         /* Post Event Example */
-        if (time_now_sec % 3 == 0 && user_master_dev_available()) {
+        if (time_now_sec % 2 == 0 && user_master_dev_available()) {
             user_post_event();
         }
         #if 0
         /* Device Info Update Example */
         if (time_now_sec % 23 == 0 && user_master_dev_available()) {
             user_deviceinfo_update();
-        }
-        
-        /* Device Info Delete Example */
-        if (time_now_sec % 29 == 0 && user_master_dev_available()) {
-            user_deviceinfo_delete();
-        }
-
-        /* Post Raw Example */
-        if (time_now_sec % 37 == 0 && user_master_dev_available()) {
-            user_post_raw_data();
         }
         #endif
 

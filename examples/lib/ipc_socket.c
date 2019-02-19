@@ -88,3 +88,32 @@ int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number
     return -1;
 }
 
+
+int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short DataBuf)
+{
+    char commond[512];
+    char buffer[1024];
+
+    if(name == NULL){
+        EXAMPLE_TRACE("name is null\n");
+        return -1;
+    }
+
+    snprintf(commond, 100, "%s:3,%d,%04X,1,%d\n", name, addr, reg_start, DataBuf);
+    EXAMPLE_TRACE("send:%s",commond);
+    write(fd, commond, strlen(commond));
+
+    int nread_len;
+    nread_len = read(fd, buffer, 1024);
+    buffer[nread_len] = 0;
+
+    if(nread_len > 0){
+        EXAMPLE_TRACE("recv:%s",buffer);
+        if( strstr(buffer, "error") == NULL ){
+            if(strcmp(commond, buffer) == 0){
+                return 0;
+            }
+        }
+    }
+    return -1;
+}
