@@ -482,10 +482,12 @@ void user_post_property(void)
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_VALUE, 1, RevData);
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_OUTPOWER, 1, &RevData[1]);
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_ERROR, 1, &RevData[2]);
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_STATUS, 1, &RevData[3]);
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, COOL_STATUS, 1, &RevData[4]);
 
-        EXAMPLE_TRACE("Temp: %d,Temp_PowerSet: %d,Temp_Stauts: %d", RevData[0], RevData[1], RevData[2]);
-        snprintf(property_payload, 512, "{\"Temp\":%.2f,\"Temp_PowerSet\":%d,\"Temp_Stauts\":%d}", \
-                                            (float)RevData[0] / TEMP_VALUE_DIV, RevData[1], RevData[2]);
+        EXAMPLE_TRACE("Temp: %d,Temp_PowerSet: %d,Temp_Stauts: %d,error: %d,cooling: %d", RevData[0], RevData[1], RevData[3],RevData[2], RevData[4]);
+        snprintf(property_payload, 512, "{\"Temp\":%d,\"Temp_PowerSet\":%d,\"Temp_Stauts\":%d,\"Cool_Status\":%d}", \
+                                            RevData[0] / TEMP_VALUE_DIV, RevData[1], RevData[3], RevData[4]);
         example_index++;
     }else if (example_index == 3) {
         /* normal */
@@ -557,11 +559,19 @@ void user_post_event(void)
         event_id = "Temp_Error";
         /* Wrong Value Format */
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_ERROR, 1, RevData);
-        if(RevData[0] != error_code_ctx->Temp_Freq_ErrorCode){
-            error_code_ctx->Temp_Freq_ErrorCode = RevData[0];
-            snprintf(event_payload, 512, "{\"Temp_ErrorCode\":%d}", RevData[0]);
-        }else{
-            EXAMPLE_TRACE("Temp_Freq_ErrorCode: %d Temp RecvCode: %d", error_code_ctx->Temp_Freq_ErrorCode, RevData[0]);
+        Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_STATUS, 1, &RevData[1]);
+        if(RevData[1] == 2)
+        {
+            if(RevData[0] != error_code_ctx->Temp_Freq_ErrorCode){
+                error_code_ctx->Temp_Freq_ErrorCode = RevData[0];
+                snprintf(event_payload, 512, "{\"Temp_ErrorCode\":%d}", RevData[0]);
+            }else{
+                EXAMPLE_TRACE("Temp_Freq_ErrorCode: %d Temp RecvCode: %d", error_code_ctx->Temp_Freq_ErrorCode, RevData[0]);
+                example_index = 0;
+                return ;
+            }
+        }
+        else{
             example_index = 0;
             return ;
         }

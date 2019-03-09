@@ -17,6 +17,8 @@
 #define TEMP_VALUE    0x1100
 #define TEMP_OUTPOWER 0x1200
 #define TEMP_ERROR    0x3000
+#define TEMP_STATUS   0x3001
+#define COOL_STATUS   0x3002
 
 #define VOLTAGE_A 0x0000
 #define VOLTAGE_B 0x0001
@@ -28,7 +30,7 @@
 #define FEED_HUM_DIV  100
 #define FREQ_FREQSET_DIV  100
 #define FREQ_FREQRUN_DIV  100
-#define TEMP_VALUE_DIV  100
+#define TEMP_VALUE_DIV  1
 #define VOLTAGE_DIV  10
 #define CURRENT_DIV  100
 
