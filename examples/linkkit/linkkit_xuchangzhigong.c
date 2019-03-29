@@ -19,8 +19,8 @@
 // for demo only
 #define PRODUCT_KEY      "a1Yoa3d9cDn"
 #define PRODUCT_SECRET   "HQGrq6fFe0Tib6zQ"
-#define DEVICE_NAME      "2018120001"
-#define DEVICE_SECRET    "wB3EEk9gEamOiWbRE4AgZefBBabuMJCH"
+#define DEVICE_NAME      "2019030002"
+#define DEVICE_SECRET    "K45unajQ7zPTtbClqh4J46fdPKhi4MBU"
 
 #if USE_CUSTOME_DOMAIN
     #define CUSTOME_DOMAIN_MQTT     "iot-as-mqtt.cn-shanghai.aliyuncs.com"
@@ -221,7 +221,7 @@ static int user_property_set_event_handler(const int devid, const char *request,
         }
     }else if (strcmp("Roller_FreqSet", nameid) == 0) {
         double set_value = atof(valuestring);
-        unsigned short value = set_value / 50 * 10000;
+        unsigned short value = set_value / 60 * 10000;
         res = Send_Commond(user_example_ctx->server_fd, FCONVE_NAME, 1, FREQ_VALUE, value);
         if(res < 0){
             return -1;
@@ -614,27 +614,22 @@ void set_iotx_info()
     HAL_SetDeviceSecret(DEVICE_SECRET);
 }
 
-static int max_running_seconds = 0;
+
 int linkkit_main(void *paras)
 {
 
     uint64_t                        time_prev_sec = 0, time_now_sec = 0;
-    uint64_t                        time_begin_sec = 0;
+    //uint64_t                        time_begin_sec = 0;
     int                             res = 0;
     iotx_linkkit_dev_meta_info_t    master_meta_info;
     user_example_ctx_t             *user_example_ctx = user_example_get_ctx();
 #if defined(__UBUNTU_SDK_DEMO__)
     int                             argc = ((app_main_paras_t *)paras)->argc;
-    char                          **argv = ((app_main_paras_t *)paras)->argv;
+    //char                          **argv = ((app_main_paras_t *)paras)->argv;
     
 
     if (argc > 1) {
-        int     tmp = atoi(argv[1]);
-
-        if (tmp >= 60) {
-            max_running_seconds = tmp;
-            EXAMPLE_TRACE("set [max_running_seconds] = %d seconds\n", max_running_seconds);
-        }
+        
     }
 #endif
 
@@ -703,17 +698,13 @@ int linkkit_main(void *paras)
     }
 
 
-    time_begin_sec = user_update_sec();
+    //time_begin_sec = user_update_sec();
     while (1) {
         IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
 
         time_now_sec = user_update_sec();
         if (time_prev_sec == time_now_sec) {
             continue;
-        }
-        if (max_running_seconds && (time_now_sec - time_begin_sec > max_running_seconds)) {
-            EXAMPLE_TRACE("Example Run for Over %d Seconds, Break Loop!\n", max_running_seconds);
-            break;
         }
         
         /* Post Proprety Example */
