@@ -41,6 +41,8 @@ typedef struct {
     int cloud_connected;
     int master_initialized;
     int	 server_fd;
+    char * DeviceName;
+    char * DeviceSecret;
 } user_example_ctx_t;
 
 typedef struct{
@@ -612,10 +614,16 @@ static int user_master_dev_available(void)
 
 void set_iotx_info()
 {
+    user_example_ctx_t             *user_example_ctx = user_example_get_ctx();
     HAL_SetProductKey(PRODUCT_KEY);
     HAL_SetProductSecret(PRODUCT_SECRET);
-    HAL_SetDeviceName(DEVICE_NAME);
-    HAL_SetDeviceSecret(DEVICE_SECRET);
+    if((user_example_ctx->DeviceName == NULL) || (user_example_ctx->DeviceSecret == NULL)){
+        HAL_SetDeviceName(DEVICE_NAME);
+        HAL_SetDeviceSecret(DEVICE_SECRET);
+    }else{
+        HAL_SetDeviceName(user_example_ctx->DeviceName);
+        HAL_SetDeviceSecret(user_example_ctx->DeviceSecret);
+    }
 }
 
 
@@ -627,21 +635,28 @@ int linkkit_main(void *paras)
     int                             res = 0;
     iotx_linkkit_dev_meta_info_t    master_meta_info;
     user_example_ctx_t             *user_example_ctx = user_example_get_ctx();
+    memset(user_example_ctx, 0, sizeof(user_example_ctx_t));
 #if defined(__UBUNTU_SDK_DEMO__)
     int                             argc = ((app_main_paras_t *)paras)->argc;
-    //char                          **argv = ((app_main_paras_t *)paras)->argv;
+    char                          **argv = ((app_main_paras_t *)paras)->argv;
     
-
-    if (argc > 1) {
-        
+    EXAMPLE_TRACE("argc %d\n", argc);
+    if (argc == 3) {
+        user_example_ctx->DeviceName = malloc(strlen(argv[1]) + 1);
+        strcpy(user_example_ctx->DeviceName, argv[1]);
+        user_example_ctx->DeviceSecret = malloc(strlen(argv[2]) + 1);
+        strcpy(user_example_ctx->DeviceSecret, argv[2]);
+        EXAMPLE_TRACE("set DeviceName %s DeviceSecret %s \n", user_example_ctx->DeviceName, user_example_ctx->DeviceSecret);
+    }else
+    {
+        return -1;
     }
+    
 #endif
 
 #if !defined(WIFI_PROVISION_ENABLED) || !defined(BUILD_AOS)
     set_iotx_info();
 #endif
-
-    memset(user_example_ctx, 0, sizeof(user_example_ctx_t));
 
     IOT_SetLogLevel(IOT_LOG_INFO);
 
@@ -662,8 +677,14 @@ int linkkit_main(void *paras)
     memset(&master_meta_info, 0, sizeof(iotx_linkkit_dev_meta_info_t));
     memcpy(master_meta_info.product_key, PRODUCT_KEY, strlen(PRODUCT_KEY));
     memcpy(master_meta_info.product_secret, PRODUCT_SECRET, strlen(PRODUCT_SECRET));
-    memcpy(master_meta_info.device_name, DEVICE_NAME, strlen(DEVICE_NAME));
-    memcpy(master_meta_info.device_secret, DEVICE_SECRET, strlen(DEVICE_SECRET));
+
+    if((user_example_ctx->DeviceName == NULL) || (user_example_ctx->DeviceSecret == NULL)){
+        memcpy(master_meta_info.device_name, DEVICE_NAME, strlen(DEVICE_NAME));
+        memcpy(master_meta_info.device_secret, DEVICE_SECRET, strlen(DEVICE_SECRET));
+    }else{
+        memcpy(master_meta_info.device_name, user_example_ctx->DeviceName, strlen(user_example_ctx->DeviceName));
+        memcpy(master_meta_info.device_secret, user_example_ctx->DeviceSecret, strlen(user_example_ctx->DeviceSecret));
+    }
 
     /* Choose Login Server, domain should be configured before IOT_Linkkit_Open() */
 #if USE_CUSTOME_DOMAIN
