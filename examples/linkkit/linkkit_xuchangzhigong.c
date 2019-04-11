@@ -19,8 +19,8 @@
 // for demo only
 #define PRODUCT_KEY      "a1Yoa3d9cDn"
 #define PRODUCT_SECRET   "HQGrq6fFe0Tib6zQ"
-#define DEVICE_NAME      "2019030002"
-#define DEVICE_SECRET    "K45unajQ7zPTtbClqh4J46fdPKhi4MBU"
+#define DEVICE_NAME      "2019030001"
+#define DEVICE_SECRET    "WF89LmvwXeNz0FRUcghavAyqsWpgbqtZ"
 
 #if USE_CUSTOME_DOMAIN
     #define CUSTOME_DOMAIN_MQTT     "iot-as-mqtt.cn-shanghai.aliyuncs.com"
@@ -456,7 +456,11 @@ void user_post_property(void)
 
     if (example_index == 0) {
         /* feed lora */
-        Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_STATUS, 1, RevData);
+        res = Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_STATUS, 1, RevData);
+        if(res == -2){
+            user_example_ctx->server_fd = cli_conn(CS_OPEN);
+            EXAMPLE_TRACE("new server_fd: %d,", user_example_ctx->server_fd);
+        }
         Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_FREQSET, 1, &RevData[1]);
         Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FREQ_FREQRUN, 1, &RevData[2]);
         Request_Commond(user_example_ctx->server_fd,FEED_LORA_NAME, 1, FEED_HUM, 1, &RevData[3]);

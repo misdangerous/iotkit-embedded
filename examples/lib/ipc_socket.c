@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include "iot_export.h"
 #include <unistd.h>
-
+#include "apue.h"
 #define EXAMPLE_TRACE(...)                               \
     do {                                                     \
         HAL_Printf("\033[1;32;40m%s.%d: ", __func__, __LINE__);  \
@@ -44,7 +44,11 @@ int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number
 
     snprintf(commond, 100, "%s:4,%d,%04X,%d\n", name, addr, reg_start, reg_number);
     EXAMPLE_TRACE("send:%s",commond);
-    write(fd, commond, strlen(commond));
+    rc = write(fd, commond, strlen(commond));
+    if(rc < 0){
+        EXAMPLE_TRACE("write false:%d",rc);
+        return -2;
+    }
 
     int nread_len;
     nread_len = read(fd, buffer, 1024);
@@ -56,6 +60,7 @@ int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number
         
         if(rc <= 1){
             EXAMPLE_TRACE("sense name no find");
+
             return -1;
         }
 
@@ -84,6 +89,9 @@ int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number
             EXAMPLE_TRACE("commond is error");
             return -1;
         }
+    }else
+    {
+        EXAMPLE_TRACE("read false:%d",nread_len);
     }
     return -1;
 }
@@ -93,7 +101,7 @@ int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short Da
 {
     char commond[512];
     char buffer[1024];
-
+    int rec= 0;
     if(name == NULL){
         EXAMPLE_TRACE("name is null\n");
         return -1;
@@ -101,7 +109,10 @@ int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short Da
 
     snprintf(commond, 100, "%s:3,%d,%04X,1,%d\n", name, addr, reg_start, DataBuf);
     EXAMPLE_TRACE("send:%s",commond);
-    write(fd, commond, strlen(commond));
+    rec = write(fd, commond, strlen(commond));
+    if(rec <= 0){
+        EXAMPLE_TRACE("send false:%d",rec);
+    }
 
     int nread_len;
     nread_len = read(fd, buffer, 1024);
@@ -114,6 +125,10 @@ int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short Da
                 return 0;
             }
         }
+    }else
+    {
+        EXAMPLE_TRACE("read false:%d",nread_len);
     }
+    
     return -1;
 }
