@@ -451,7 +451,7 @@ void HAL_ThreadDelete(_IN_ void *thread_handle)
 
 static FILE *fp;
 
-#define otafilename "/tmp/alinkota.bin"
+#define otafilename "/opt/UpdateSystem.tar"
 
 void HAL_Firmware_Persistence_Start(void)
 {
@@ -484,7 +484,7 @@ int HAL_Firmware_Persistence_Stop(void)
 #endif
 
     /* check file md5, and burning it to flash ... finally reboot system */
-
+    system("/opt/script/UpdateSystem.sh");
     return 0;
 }
 

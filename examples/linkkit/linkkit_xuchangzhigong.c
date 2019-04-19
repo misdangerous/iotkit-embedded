@@ -8,6 +8,13 @@
 #include "app_entry.h"
 #include "apue.h"
 #include "ipc_socket.h"
+#include <stdio.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include "serial.h"
+
 #define	CS_OPEN "/tmp/opend.socket"	/* well-known name */
 
 #if defined(OTA_ENABLED) && defined(BUILD_AOS)
@@ -400,12 +407,14 @@ static int user_fota_event_handler(int type, const char *version)
 {
     char buffer[128] = {0};
     int buffer_length = 128;
+    int rec;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
 
     if (type == 0) {
         EXAMPLE_TRACE("New Firmware Version: %s", version);
 
-        IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length);
+        rec = IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length);
+        EXAMPLE_TRACE("IOT_Linkkit_Query: %d", rec);
     }
 
     return 0;
@@ -588,16 +597,111 @@ void user_post_event(void)
                                    event_payload, strlen(event_payload));
     EXAMPLE_TRACE("Post Event Message ID: %d", res);
 }
-
+#define ICCID "AT+ICCID\n"
+#define CREG2 "AT+CREG=2\n"
+#define CREG_REQUEST "AT+CREG?\n"
+#define QNWINFO "AT+QNWINFO\n"
+#define CSQ "AT+CSQ\n"
+#define AT_OK "OK"
 void user_deviceinfo_update(void)
 {
-    int res = 0;
+    int res = 0,ttyfd;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-    char *device_info_update = "[{\"attrKey\":\"abc\",\"attrValue\":\"hello,world\"}]";
+    char RecvBuff[100];
+    char use_datastr[50];
+    int RecvLen = 0,mnc,lac,cid,sig_val;
+    char *data_str;
+    char device_info_update[100];
 
+    ttyfd = open("/dev/ttyUSB2", O_RDWR | O_NOCTTY);
+    if (ttyfd < 0){
+        EXAMPLE_TRACE("open ec20 module false %d", ttyfd);
+        return ;
+    }
+    res = set_port_min_time_attr (ttyfd, 10, 0 );
+
+    /* ICCID*/
+    RecvLen = write(ttyfd, ICCID, strlen(ICCID));
+
+    RecvLen = read(ttyfd, RecvBuff, 100);
+    if(RecvLen <= 0){
+        return ;
+    }
+    RecvBuff[RecvLen] = 0;
+    if(strstr(RecvBuff, AT_OK) != NULL){
+        data_str = strstr(RecvBuff,"ICCID");
+        sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+        EXAMPLE_TRACE("ICCID str:%s",use_datastr);
+    }
+    /* report ICCID data */
+    snprintf(device_info_update, 100, "[{\"attrKey\":\"ICCID\",\"attrValue\":\"%s\"}]", use_datastr);
     res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_DEVICEINFO_UPDATE,
                              (unsigned char *)device_info_update, strlen(device_info_update));
     EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
+
+    /* QNWINFO*/
+    RecvLen = write(ttyfd, QNWINFO, strlen(QNWINFO));
+
+    RecvLen = read(ttyfd, RecvBuff, 100);
+    if(RecvLen <= 0){
+        return ;
+    }
+    RecvBuff[RecvLen] = 0;
+    if(strstr(RecvBuff, AT_OK) != NULL){
+        data_str = strstr(RecvBuff,"QNWINFO");
+        sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+        sscanf(use_datastr, "%*[^,],\"%d\",%*[^\n]",&mnc);
+        EXAMPLE_TRACE("QNWINFO str:%d",mnc);
+    }
+    /* CREG2*/
+    RecvLen = write(ttyfd, CREG2, strlen(CREG2));
+
+    RecvLen = read(ttyfd, RecvBuff, 100);
+    if(RecvLen <= 0){
+        return ;
+    }
+    RecvBuff[RecvLen] = 0;
+    if(strstr(RecvBuff, AT_OK) != NULL){
+        /* CREG_REQUEST*/
+        RecvLen = write(ttyfd, CREG_REQUEST, strlen(CREG_REQUEST));
+
+        RecvLen = read(ttyfd, RecvBuff, 100);
+        if(RecvLen <= 0){
+            return ;
+        }
+        RecvBuff[RecvLen] = 0;
+        if(strstr(RecvBuff, AT_OK) != NULL){
+            data_str = strstr(RecvBuff,"CREG");
+            sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+            EXAMPLE_TRACE("CREG str:%s",use_datastr);
+            sscanf(use_datastr, "%*[^\"]\"%X\",\"%X\"%*[^\n]", &lac, &cid);
+            EXAMPLE_TRACE("CREG lac:%d cid:%d", lac, cid);
+        }
+    }
+    /* CSQ*/
+    RecvLen = write(ttyfd, CSQ, strlen(CSQ));
+
+    RecvLen = read(ttyfd, RecvBuff, 100);
+    if(RecvLen <= 0){
+        return ;
+    }
+    RecvBuff[RecvLen] = 0;
+    if(strstr(RecvBuff, AT_OK) != NULL){
+        data_str = strstr(RecvBuff,"CSQ");
+        sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+        EXAMPLE_TRACE("CSQ str:%s", use_datastr);
+        sscanf(use_datastr, "%d,%*[^\n]", &sig_val);
+        sig_val = 2 * sig_val - 113;
+        EXAMPLE_TRACE("CSQ sig_val:%d", sig_val);
+    }
+    /* report LBS data */
+    snprintf(device_info_update, 100, "[{\"attrKey\":\"LBS\",\"attrValue\":\"%d,%d,%d,%d\"}]", mnc, lac, cid, sig_val);
+    res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_DEVICEINFO_UPDATE,
+                             (unsigned char *)device_info_update, strlen(device_info_update));
+    EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
+
+    close(ttyfd);
+    
 }
 
 
@@ -722,6 +826,7 @@ int linkkit_main(void *paras)
         EXAMPLE_TRACE("cli_conn error\n");
     }
 
+    user_deviceinfo_update();
 
     //time_begin_sec = user_update_sec();
     while (1) {
