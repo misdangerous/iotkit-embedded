@@ -612,17 +612,19 @@ void user_deviceinfo_update(void)
     int RecvLen = 0,mnc,lac,cid,sig_val;
     char *data_str;
     char device_info_update[100];
-
+    
     ttyfd = open("/dev/ttyUSB2", O_RDWR | O_NOCTTY);
     if (ttyfd < 0){
         EXAMPLE_TRACE("open ec20 module false %d", ttyfd);
         return ;
     }
+    EXAMPLE_TRACE("start ttyUSB2 fd:%d", ttyfd);
     res = set_port_min_time_attr (ttyfd, 10, 0 );
+    EXAMPLE_TRACE("set_port_min_time_attr res:%d", res);
 
     /* ICCID*/
     RecvLen = write(ttyfd, ICCID, strlen(ICCID));
-
+    
     RecvLen = read(ttyfd, RecvBuff, 100);
     if(RecvLen <= 0){
         return ;
@@ -630,14 +632,16 @@ void user_deviceinfo_update(void)
     RecvBuff[RecvLen] = 0;
     if(strstr(RecvBuff, AT_OK) != NULL){
         data_str = strstr(RecvBuff,"ICCID");
-        sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
-        EXAMPLE_TRACE("ICCID str:%s",use_datastr);
+        if(data_str != NULL){
+            sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+            EXAMPLE_TRACE("ICCID str:%s",use_datastr);
+            /* report ICCID data */
+            snprintf(device_info_update, 100, "[{\"attrKey\":\"ICCID\",\"attrValue\":\"%s\"}]", use_datastr);
+            res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_DEVICEINFO_UPDATE,
+                                    (unsigned char *)device_info_update, strlen(device_info_update));
+            EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
+        }
     }
-    /* report ICCID data */
-    snprintf(device_info_update, 100, "[{\"attrKey\":\"ICCID\",\"attrValue\":\"%s\"}]", use_datastr);
-    res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_DEVICEINFO_UPDATE,
-                             (unsigned char *)device_info_update, strlen(device_info_update));
-    EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
 
     /* QNWINFO*/
     RecvLen = write(ttyfd, QNWINFO, strlen(QNWINFO));
@@ -649,9 +653,11 @@ void user_deviceinfo_update(void)
     RecvBuff[RecvLen] = 0;
     if(strstr(RecvBuff, AT_OK) != NULL){
         data_str = strstr(RecvBuff,"QNWINFO");
-        sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
-        sscanf(use_datastr, "%*[^,],\"%d\",%*[^\n]",&mnc);
-        EXAMPLE_TRACE("QNWINFO str:%d",mnc);
+        if(data_str != NULL){
+            sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+            sscanf(use_datastr, "%*[^,],\"%d\",%*[^\n]",&mnc);
+            EXAMPLE_TRACE("QNWINFO str:%d",mnc);
+        }
     }
     /* CREG2*/
     RecvLen = write(ttyfd, CREG2, strlen(CREG2));
@@ -672,10 +678,12 @@ void user_deviceinfo_update(void)
         RecvBuff[RecvLen] = 0;
         if(strstr(RecvBuff, AT_OK) != NULL){
             data_str = strstr(RecvBuff,"CREG");
-            sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
-            EXAMPLE_TRACE("CREG str:%s",use_datastr);
-            sscanf(use_datastr, "%*[^\"]\"%X\",\"%X\"%*[^\n]", &lac, &cid);
-            EXAMPLE_TRACE("CREG lac:%d cid:%d", lac, cid);
+            if(data_str != NULL){
+                sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+                EXAMPLE_TRACE("CREG str:%s",use_datastr);
+                sscanf(use_datastr, "%*[^\"]\"%X\",\"%X\"%*[^\n]", &lac, &cid);
+                EXAMPLE_TRACE("CREG lac:%d cid:%d", lac, cid);
+            }
         }
     }
     /* CSQ*/
@@ -688,11 +696,13 @@ void user_deviceinfo_update(void)
     RecvBuff[RecvLen] = 0;
     if(strstr(RecvBuff, AT_OK) != NULL){
         data_str = strstr(RecvBuff,"CSQ");
-        sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
-        EXAMPLE_TRACE("CSQ str:%s", use_datastr);
-        sscanf(use_datastr, "%d,%*[^\n]", &sig_val);
-        sig_val = 2 * sig_val - 113;
-        EXAMPLE_TRACE("CSQ sig_val:%d", sig_val);
+        if(data_str != NULL){
+            sscanf(data_str, "%*[^ ] %[^\n]",use_datastr);
+            EXAMPLE_TRACE("CSQ str:%s", use_datastr);
+            sscanf(use_datastr, "%d,%*[^\n]", &sig_val);
+            sig_val = 2 * sig_val - 113;
+            EXAMPLE_TRACE("CSQ sig_val:%d", sig_val);
+        }
     }
     /* report LBS data */
     snprintf(device_info_update, 100, "[{\"attrKey\":\"LBS\",\"attrValue\":\"%d,%d,%d,%d\"}]", mnc, lac, cid, sig_val);
@@ -825,9 +835,7 @@ int linkkit_main(void *paras)
     if(user_example_ctx->server_fd < 0){
         EXAMPLE_TRACE("cli_conn error\n");
     }
-
     user_deviceinfo_update();
-
     //time_begin_sec = user_update_sec();
     while (1) {
         IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
@@ -848,7 +856,7 @@ int linkkit_main(void *paras)
         }
         #if 0
         /* Device Info Update Example */
-        if (time_now_sec % 23 == 0 && user_master_dev_available()) {
+        if (time_now_sec % 60 == 0 && user_master_dev_available()) {
             user_deviceinfo_update();
         }
         #endif

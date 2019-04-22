@@ -130,5 +130,6 @@ int  set_port_min_time_attr (
     opt.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
     opt.c_cc[VTIME]     	 = vtime;        
     opt.c_cc[VMIN]         	 = vmin; 
+    tcflush (fd, TCIFLUSH);
     return (tcsetattr (fd, TCSANOW, &opt));
 }
