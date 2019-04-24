@@ -181,6 +181,7 @@ static int user_property_set_event_handler(const int devid, const char *request,
     int res = 0;
     char nameid[50];
     char valuestring[50];
+    char valuetypestr[50];
     
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
     EXAMPLE_TRACE("Property Set Received, Devid: %d, Request: %s", devid, request);
@@ -240,6 +241,57 @@ static int user_property_set_event_handler(const int devid, const char *request,
         res = Send_Commond(user_example_ctx->server_fd, TEMP_NAME, 1, TEMP_OUTPOWER, (unsigned short)set_value);
         if(res < 0){
             return -1;
+        }
+    }else if (strcmp("Temp_RunType", nameid) == 0) {
+        int set_value = atoi(valuestring);
+        res = Temp_TypeSet(user_example_ctx->server_fd, 0, valuestring);
+        if(res < 0){
+            return -1;
+        }
+        /* 手动停止状态停止加热 */
+        if(set_value == 0){
+            res = Send_Commond(user_example_ctx->server_fd, TEMP_NAME, 1, TEMP_ONOFF, 0);
+            if(res < 0){
+                return -1;
+            }
+        }
+    }else if (strcmp("Temp_PIDTargetValue", nameid) == 0) {
+        res = Temp_TypeSet(user_example_ctx->server_fd, 3, valuestring);
+        if(res < 0){
+            return -1;
+        }
+    }else if (strcmp("Temp_ValueStop", nameid) == 0) {
+        res = Temp_TypeSet(user_example_ctx->server_fd, 4, valuestring);
+        if(res < 0){
+            return -1;
+        }
+    }else if (strcmp("Temp_StepPower", nameid) == 0) {
+        sscanf(valuestring, "\"%[^\"]", valuetypestr);
+        if(valuetypestr != NULL){
+            res = Temp_TypeSet(user_example_ctx->server_fd, 2, valuetypestr);
+            if(res < 0){
+                return -1;
+            }
+        }else{
+            return -1;
+        }
+    }else if (strcmp("Temp_PIDKv", nameid) == 0) {
+        sscanf(valuestring, "\"%[^\"]", valuetypestr);
+        if(valuetypestr != NULL){
+            res = Temp_TypeSet(user_example_ctx->server_fd, 1, valuetypestr);
+            if(res < 0){
+                return -1;
+            }
+        }else{
+            return -1;
+        }
+    }else if (strcmp("Temp_Stauts", nameid) == 0) {
+        int set_value = atoi(valuestring);
+        if(set_value < 2){
+            res = Send_Commond(user_example_ctx->server_fd, TEMP_NAME, 1, TEMP_ONOFF, set_value);
+            if(res < 0){
+                return -1;
+            }
         }
     }
 
@@ -499,6 +551,7 @@ void user_post_property(void)
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_ERROR, 1, &RevData[2]);
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, TEMP_STATUS, 1, &RevData[3]);
         Request_Commond(user_example_ctx->server_fd,TEMP_NAME, 1, COOL_STATUS, 1, &RevData[4]);
+        
 
         EXAMPLE_TRACE("Temp: %d,Temp_PowerSet: %d,Temp_Stauts: %d,error: %d,cooling: %d", RevData[0], RevData[1], RevData[3],RevData[2], RevData[4]);
         snprintf(property_payload, 512, "{\"Temp\":%d,\"Temp_PowerSet\":%d,\"Temp_Stauts\":%d,\"Cool_Status\":%d}", \

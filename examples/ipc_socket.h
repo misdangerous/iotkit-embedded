@@ -14,6 +14,7 @@
 #define FREQ_STATUS   0xB000
 #define FREQ_ERROR    0xB001
 
+#define TEMP_ONOFF    0x1001
 #define TEMP_VALUE    0x1100
 #define TEMP_OUTPOWER 0x1200
 #define TEMP_ERROR    0x3000
@@ -39,5 +40,6 @@
 
 int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number, unsigned short *DataBuf);
 int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short DataBuf);
+int Temp_TypeSet(int fd, int function, char* data);
 
 #endif

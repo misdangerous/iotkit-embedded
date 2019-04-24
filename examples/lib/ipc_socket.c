@@ -99,7 +99,7 @@ int Request_Commond(int fd, char * name, int addr, int reg_start, int reg_number
 
 int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short DataBuf)
 {
-    char commond[512];
+    char commond[100];
     char buffer[1024];
     int rec= 0;
     if(name == NULL){
@@ -109,6 +109,42 @@ int Send_Commond(int fd, char * name, int addr, int reg_start, unsigned short Da
 
     snprintf(commond, 100, "%s:3,%d,%04X,1,%d\n", name, addr, reg_start, DataBuf);
     EXAMPLE_TRACE("send:%s",commond);
+    rec = write(fd, commond, strlen(commond));
+    if(rec <= 0){
+        EXAMPLE_TRACE("send false:%d",rec);
+    }
+
+    int nread_len;
+    nread_len = read(fd, buffer, 1024);
+    buffer[nread_len] = 0;
+
+    if(nread_len > 0){
+        EXAMPLE_TRACE("recv:%s",buffer);
+        if( strstr(buffer, "error") == NULL ){
+            if(strcmp(commond, buffer) == 0){
+                return 0;
+            }
+        }
+    }else
+    {
+        EXAMPLE_TRACE("read false:%d",nread_len);
+    }
+    
+    return -1;
+}
+int Temp_TypeSet(int fd, int function, char* data)
+{
+    char commond[100];
+    char buffer[1024];
+    int rec= 0;
+    
+    if(data == NULL){
+        EXAMPLE_TRACE("data is null\n");
+        return -1;
+    }
+    snprintf(commond, 100, "temp_uart:5,%d,%s\n", function, data);
+    EXAMPLE_TRACE("send:%s",commond);
+
     rec = write(fd, commond, strlen(commond));
     if(rec <= 0){
         EXAMPLE_TRACE("send false:%d",rec);
